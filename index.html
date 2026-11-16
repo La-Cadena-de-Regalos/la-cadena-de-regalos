@@ -196,13 +196,20 @@
     .pillar-box { background: #fdfbf7; border: 1px solid var(--border-soft); padding: 1.2rem; border-radius: 10px; }
     .pillar-box h4 { color: var(--green-primary); margin-bottom: 0.4rem; font-size: 1.05rem; }
 
-    /* Pestañas de Categorías (Limpia la página principal por secciones) */
-    .categories { display: flex; gap: 0.8rem; overflow-x: auto; padding-bottom: 0.8rem; margin-bottom: 1.5rem; }
+    /* Pestañas de Categorías */
+    .categories { display: flex; gap: 0.8rem; overflow-x: auto; padding-bottom: 0.8rem; margin-bottom: 1rem; }
     .cat-btn {
       border: 1px solid var(--border-soft); background: white; padding: 0.6rem 1.2rem;
       border-radius: 25px; cursor: pointer; white-space: nowrap; font-size: 0.9rem; transition: all 0.2s;
     }
     .cat-btn.active, .cat-btn:hover { background: var(--green-primary); color: white; border-color: var(--green-primary); }
+
+    .grid-subtitle {
+      font-size: 0.88rem;
+      color: #666;
+      margin-bottom: 1.2rem;
+      font-style: italic;
+    }
 
     /* Rejilla Minimalista (Solo Foto y Título) */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.2rem; }
@@ -216,6 +223,7 @@
       transition: transform 0.2s, box-shadow 0.2s;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
 
     .item-card:hover {
@@ -224,7 +232,22 @@
       border-color: var(--gold-primary);
     }
 
-  .item-img {
+    .cat-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--green-primary);
+      border: 1px solid var(--gold-primary);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      z-index: 2;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+    }
+
+    .item-img {
       height: 200px;
       background: #f7f3ed;
       display: flex;
@@ -276,6 +299,7 @@
       object-fit: contain; 
       border-radius: 6px; 
     }
+
     /* Votación de Encuesta */
     .vote-btn {
       border: 2px solid var(--gold-primary); background: white; padding: 0.7rem 2.2rem;
@@ -381,12 +405,12 @@
       </div>
     </section>
 
-    <!-- 2. Catálogo Vecinal por Secciones (Limpio y por pestañas) -->
+    <!-- 2. Catálogo Vecinal por Secciones -->
     <section id="catalogo" class="section-card">
       <h2 class="section-title">🎁 Escaparate Vecinal</h2>
 
       <div class="categories">
-        <button class="cat-btn active" onclick="filterItems('all', event)">Ver Todo</button>
+        <button class="cat-btn active" onclick="filterItems('all', event)">Novedades por Sección</button>
         <button class="cat-btn" onclick="filterItems('personalizados', event)">✨ Personalizados</button>
         <button class="cat-btn" onclick="filterItems('decoracion', event)">Decoración Festiva</button>
         <button class="cat-btn" onclick="filterItems('madera', event)">Artesanía & Madera</button>
@@ -395,13 +419,15 @@
         <button class="cat-btn" onclick="filterItems('otros', event)">Otros detalles</button>
       </div>
 
+      <p class="grid-subtitle" id="gridSubtitle">Mostrando la última creación de cada categoría. Pulsa en una sección para ver todas sus creaciones.</p>
+
       <!-- Rejilla minimalista: solo foto y nombre -->
       <div class="grid" id="itemsGrid">
         <div class="empty-state">Cargando creaciones de los vecinos... 🎄</div>
       </div>
     </section>
 
-    <!-- 3. Mercadillo con Chocolatada (Conteo de Votos Corregido) -->
+    <!-- 3. Mercadillo con Chocolatada -->
     <section id="chocolatada" class="section-card" style="text-align: center; background: linear-gradient(135deg, #fdfbf7 0%, #f4ede2 100%); border: 2px solid var(--gold-primary);">
       <h2 class="section-title">☕ Mercadillo con Chocolatada</h2>
       <p style="margin-bottom: 1.2rem; font-size: 1.05rem;">¿Te gustaría organizar un mercadillo navideño con chocolatada comunitaria?</p>
@@ -425,7 +451,7 @@
     </div>
   </footer>
 
-  <!-- MODAL: DETALLES DE LA MANUALIDAD (Al pinchar la foto) -->
+  <!-- MODAL: DETALLES DE LA MANUALIDAD -->
   <div class="modal-overlay" id="detailModal">
     <div class="modal-box">
       <button class="close-modal" onclick="closeModal('detailModal')">&times;</button>
@@ -474,7 +500,7 @@
         </div>
         <div class="form-group">
           <label>Aportación orientativa (€) *</label>
-          <input type="text" id="fAportacion" required placeholder="Ej. 5 € (o Intercambio)">
+          <input type="text" id="fAportacion" required placeholder="Ej. 5 (el símbolo € se pone solo)">
         </div>
         <div class="form-group">
           <label>Foto de la manualidad (Opcional)</label>
@@ -524,6 +550,19 @@
       otros:          { label: "🎁 DETALLE",        icon: "🎁" }
     };
 
+    // Formatea el importe añadiendo " €" detrás si es numérico y no lo lleva ya
+    function formatEuro(val) {
+      if (!val) return 'A consultar';
+      let str = String(val).trim();
+      if (!str) return 'A consultar';
+      if (str.includes('€')) return str;
+      // Si contiene algún número (ej. "5", "12,50", "10.00"), añadimos " €"
+      if (/\d/.test(str)) {
+        return str + ' €';
+      }
+      return str;
+    }
+
     function convertImage(input) {
       if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -532,7 +571,6 @@
       }
     }
 
-    // Carga productos y cuenta de votos desde Google Sheets
     async function loadDataFromSheets() {
       const grid = document.getElementById('itemsGrid');
       try {
@@ -543,7 +581,6 @@
           items = data.productos.reverse();
           document.getElementById('voteCount').textContent = data.votos || 0;
         } else if (Array.isArray(data)) {
-          // Compatible por si el script devuelve array plano antiguo
           items = data.reverse();
         }
         renderItems(currentFilter);
@@ -553,13 +590,30 @@
       }
     }
 
-    // Renderiza la rejilla limpia (solo foto y título)
     function renderItems(filter) {
       currentFilter = filter;
       const grid = document.getElementById('itemsGrid');
+      const subtitle = document.getElementById('gridSubtitle');
       grid.innerHTML = '';
 
-      const filtered = filter === 'all' ? items : items.filter(i => i.categoria === filter);
+      let filtered = [];
+
+      if (filter === 'all') {
+        subtitle.textContent = "Mostrando la última creación de cada categoría. Pulsa en una sección para ver todas sus creaciones.";
+        const seenCategories = new Set();
+        // Como 'items' está invertido (más reciente primero), el primero de cada categoría es el último publicado
+        items.forEach(item => {
+          const catKey = item.categoria || 'otros';
+          if (!seenCategories.has(catKey)) {
+            seenCategories.add(catKey);
+            filtered.push(item);
+          }
+        });
+      } else {
+        const info = catInfo[filter] || catInfo.otros;
+        subtitle.textContent = `Mostrando todas las creaciones en ${info.label}.`;
+        filtered = items.filter(i => i.categoria === filter);
+      }
 
       if (filtered.length === 0) {
         grid.innerHTML = `
@@ -571,17 +625,21 @@
         return;
       }
 
-      filtered.forEach((item, index) => {
+      filtered.forEach(item => {
         const info = catInfo[item.categoria] || catInfo.otros;
         const hasPhoto = item.foto && item.foto.trim().length > 10;
         const mediaHtml = hasPhoto
           ? `<img src="${item.foto.trim()}" alt="${item.nombre}">`
           : info.icon;
 
+        // En la vista general ('all') mostramos una pequeña etiqueta con el nombre de su categoría
+        const badgeHtml = filter === 'all' ? `<span class="cat-badge">${info.label}</span>` : '';
+
         const card = document.createElement('div');
         card.className = 'item-card';
         card.onclick = () => openItemDetail(item);
         card.innerHTML = `
+          ${badgeHtml}
           <div class="item-img">${mediaHtml}</div>
           <div class="item-title-bar">${item.nombre}</div>
         `;
@@ -595,7 +653,6 @@
       renderItems(cat);
     }
 
-    // Abre el modal con todas las características al hacer clic en la foto
     function openItemDetail(item) {
       const info = catInfo[item.categoria] || catInfo.otros;
       const hasPhoto = item.foto && item.foto.trim().length > 10;
@@ -606,14 +663,13 @@
       document.getElementById('detailCat').textContent = info.label;
       document.getElementById('detailTitle').textContent = item.nombre;
       document.getElementById('detailDesc').textContent = item.descripcion;
-      document.getElementById('detailPrice').textContent = `🏷️ Aportación: ${item.aportacion || 'A consultar'}`;
+      document.getElementById('detailPrice').textContent = `🏷️ Aportación: ${formatEuro(item.aportacion)}`;
       document.getElementById('detailPortal').textContent = item.portal ? `🏠 ${item.portal}` : '🏡 Vecino/a colaborador/a';
       document.getElementById('detailTelefono').textContent = item.telefono ? `📞 ${item.telefono}` : '📞 Contacto por la comunidad';
 
       openModal('detailModal');
     }
 
-    // Envía el voto de la encuesta
     async function submitVote(option) {
       const countSpan = document.getElementById('voteCount');
       let currentVotes = parseInt(countSpan.textContent) || 0;
@@ -634,19 +690,21 @@
       }
     }
 
-    // Publicación de nuevas creaciones
     async function handleFormSubmit(e) {
       e.preventDefault();
       const btn = document.getElementById('btnSubmit');
       btn.disabled = true;
       btn.textContent = "Publicando en el escaparate...";
 
+      const rawAportacion = document.getElementById('fAportacion').value;
+      const formattedAportacion = formatEuro(rawAportacion);
+
       const payload = {
         nombre: document.getElementById('fNombre').value,
         categoria: document.getElementById('fCategoria').value,
         portal: document.getElementById('fPortal').value,
         telefono: document.getElementById('fTelefono').value,
-        aportacion: document.getElementById('fAportacion').value,
+        aportacion: formattedAportacion,
         foto: document.getElementById('fFoto').value,
         descripcion: document.getElementById('fDescripcion').value
       };
