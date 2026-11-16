@@ -331,6 +331,7 @@
     }
     .form-hint { font-size: 0.78rem; color: #777; margin-top: 0.25rem; display: block; }
     .btn-submit { background: var(--green-primary); color: var(--gold-primary); border: 2px solid var(--gold-primary); padding: 0.8rem; border-radius: 8px; width: 100%; font-weight: 700; cursor: pointer; }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
     footer { text-align: center; padding: 2.5rem 1.5rem; border-top: 1px solid var(--border-soft); font-size: 0.9rem; color: var(--gold-dark); background: white; }
     .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.8rem; }
@@ -506,7 +507,7 @@
           <label>Foto de la manualidad (Opcional)</label>
           <input type="file" id="fFotoFile" accept="image/*" onchange="convertImage(this)">
           <input type="hidden" id="fFoto">
-          <span class="form-hint">Sube una foto directamente desde tu dispositivo o galería.</span>
+          <span class="form-hint" id="photoStatus">Sube una foto directamente desde tu dispositivo o galería (se optimiza sola).</span>
         </div>
         <div class="form-group">
           <label>Descripción breve *</label>
@@ -550,24 +551,73 @@
       otros:          { label: "🎁 DETALLE",        icon: "🎁" }
     };
 
-    // Formatea el importe añadiendo " €" detrás si es numérico y no lo lleva ya
     function formatEuro(val) {
       if (!val) return 'A consultar';
       let str = String(val).trim();
       if (!str) return 'A consultar';
       if (str.includes('€')) return str;
-      // Si contiene algún número (ej. "5", "12,50", "10.00"), añadimos " €"
       if (/\d/.test(str)) {
         return str + ' €';
       }
       return str;
     }
 
+    // Compresor automático de imágenes en el navegador (redimensiona a max 800px y comprime a JPEG 75%)
     function convertImage(input) {
+      const statusHint = document.getElementById('photoStatus');
+      const submitBtn = document.getElementById('btnSubmit');
+
       if (input.files && input.files[0]) {
+        statusHint.textContent = "⏳ Optimizando foto automáticamente...";
+        statusHint.style.color = "var(--gold-dark)";
+        submitBtn.disabled = true;
+
+        const file = input.files[0];
         const reader = new FileReader();
-        reader.onload = function(e) { document.getElementById('fFoto').value = e.target.result; };
-        reader.readAsDataURL(input.files[0]);
+
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const MAX_SIZE = 800;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_SIZE) {
+                height = Math.round((height * MAX_SIZE) / width);
+                width = MAX_SIZE;
+              }
+            } else {
+              if (height > MAX_SIZE) {
+                width = Math.round((width * MAX_SIZE) / height);
+                height = MAX_SIZE;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            // Rellena con blanco por si suben un PNG con fondo transparente
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+            document.getElementById('fFoto').value = compressedDataUrl;
+
+            const approxKB = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
+            statusHint.textContent = `✅ Foto lista y optimizada (${approxKB} KB).`;
+            statusHint.style.color = "var(--green-primary)";
+            submitBtn.disabled = false;
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        document.getElementById('fFoto').value = "";
+        statusHint.textContent = "Sube una foto directamente desde tu dispositivo o galería (se optimiza sola).";
+        statusHint.style.color = "#777";
       }
     }
 
@@ -601,7 +651,6 @@
       if (filter === 'all') {
         subtitle.textContent = "Mostrando la última creación de cada categoría. Pulsa en una sección para ver todas sus creaciones.";
         const seenCategories = new Set();
-        // Como 'items' está invertido (más reciente primero), el primero de cada categoría es el último publicado
         items.forEach(item => {
           const catKey = item.categoria || 'otros';
           if (!seenCategories.has(catKey)) {
@@ -632,7 +681,6 @@
           ? `<img src="${item.foto.trim()}" alt="${item.nombre}">`
           : info.icon;
 
-        // En la vista general ('all') mostramos una pequeña etiqueta con el nombre de su categoría
         const badgeHtml = filter === 'all' ? `<span class="cat-badge">${info.label}</span>` : '';
 
         const card = document.createElement('div');
@@ -724,6 +772,8 @@
       closeModal('creatorModal');
       e.target.reset();
       document.getElementById('fFoto').value = "";
+      document.getElementById('photoStatus').textContent = "Sube una foto directamente desde tu dispositivo o galería (se optimiza sola).";
+      document.getElementById('photoStatus').style.color = "#777";
       
       setTimeout(() => {
         loadDataFromSheets();
